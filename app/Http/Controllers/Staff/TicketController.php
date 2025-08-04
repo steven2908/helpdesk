@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use Illuminate\Http\Request;
 use App\Events\TicketStatusUpdatedTelegram;
+use App\Helpers\WhatsappHelper;
+use App\Http\Controllers\WAInboxController;
+
 
 
 class TicketController extends Controller
@@ -81,6 +84,8 @@ class TicketController extends Controller
 
             if ($ticket->status === 'closed' && is_null($ticket->solved_at)) {
                 $ticket->solved_at = now();
+
+                app(WAInboxController::class)->kirimSurveyJikaTiketSelesai($ticket);
             }
 
             $statusMessage = match ($ticket->status) {
@@ -90,6 +95,7 @@ class TicketController extends Controller
     };
 
     event(new TicketStatusUpdatedTelegram($ticket, $statusMessage));
+    WhatsappHelper::send($ticket->user->phone, $statusMessage);
 
             $ticket->save();
         }
@@ -115,6 +121,8 @@ if ($ticket->status === 'open') {
 if ($ticket->status === 'closed' && is_null($ticket->solved_at)) {
     $ticket->solved_at = now();
     $sendNotif = true;
+
+    app(WAInboxController::class)->kirimSurveyJikaTiketSelesai($ticket);
 }
 
 if ($sendNotif) {
@@ -125,6 +133,7 @@ if ($sendNotif) {
     };
 
     event(new TicketStatusUpdatedTelegram($ticket, $statusMessage));
+    WhatsappHelper::send($ticket->user->phone, $statusMessage);
 }
 
 

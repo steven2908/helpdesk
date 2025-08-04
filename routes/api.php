@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\Admin\CompanyController as ApiCompanyController;
 use App\Http\Controllers\TelegramController;
 use Illuminate\Support\Facades\http;
 use App\Http\Controllers\WAInboxController;
+use App\Http\Controllers\WAQRController;
 
 
 // Login TIDAK perlu pakai middleware auth
@@ -71,3 +72,8 @@ Route::post('/kirim-wa', function (\Illuminate\Http\Request $request) {
 });
 
 Route::post('/wa-inbox', [WAInboxController::class, 'store']);
+
+Route::post('/wa-qr', [WAQRController::class, 'store']);
+Route::get('/wa-qr', [WAQRController::class, 'show']);
+Route::get('/wa-status', [WAQRController::class, 'status']); // ✅ untuk frontend JS
+Route::post('/wa-status', [WAQRController::class, 'updateStatus']); // ✅ untuk bot.js (update status login)

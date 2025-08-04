@@ -4,10 +4,6 @@
     </x-slot>
 
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
         .page-title {
             font-size: 1.5rem;
             font-weight: bold;
@@ -73,6 +69,7 @@
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            color: #f9fafb;
         }
 
         .alert-success {
@@ -96,28 +93,6 @@
             border-radius: 6px;
             border: 1px solid #d1d5db;
             font-size: 14px;
-        }
-
-        table.ticket-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            color: #f9fafb;
-        }
-
-        table.ticket-table thead {
-            background-color: #334155;
-        }
-
-        table.ticket-table th,
-        table.ticket-table td {
-            padding: 12px 10px;
-            border-bottom: 1px solid #475569;
-            text-align: left;
-        }
-
-        table.ticket-table tbody tr:hover {
-            background-color: #1f2937;
         }
 
         .status-badge {
@@ -147,7 +122,18 @@
         .urgency-badge.high { background: #b91c1c; color: white; }
         .urgency-badge.urgent { background: #7c3aed; color: white; }
 
-        /* Pagination */
+        .ticket-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 13px;
+            border-radius: 5px;
+        }
+
         .pagination {
             display: flex;
             justify-content: center;
@@ -171,7 +157,6 @@
             font-weight: bold;
         }
 
-        /* Responsive */
         @media (max-width: 768px) {
             .main-content {
                 flex-direction: column;
@@ -199,51 +184,8 @@
                 <a href="{{ route('admin.tickets.index', ['status' => 'open']) }}" class="btn btn-outline-primary">Open</a>
                 <a href="{{ route('admin.tickets.index', ['status' => 'in_progress']) }}" class="btn btn-outline-warning">In Progress</a>
                 <a href="{{ route('admin.tickets.index', ['status' => 'closed']) }}" class="btn btn-outline-success">Closed</a>
-
-                {{-- Filter Perusahaan + SLA --}}
-                <div style="margin-top: 30px;">
-                    <h4 style="font-size: 15px; color: #e2e8f0;">📌 Filter Perusahaan</h4>
-                    <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
-                        @foreach($companies as $company)
-                            <a href="{{ route('admin.tickets.index', ['company_id' => $company->id]) }}"
-                                class="btn btn-outline-secondary"
-                                style="{{ request('company_id') == $company->id ? 'background: #3b82f6; color: white;' : '' }}">
-                                {{ $company->name }}
-                            </a>
-                        @endforeach
-                    </div>
-
-                    @if(request('company_id'))
-                        @php
-                            $selectedCompany = $companies->firstWhere('id', request('company_id'));
-                        @endphp
-
-                        @if($selectedCompany && ($selectedCompany->sla_response_time || $selectedCompany->sla_resolution_time))
-                            <div style="margin-top: 20px;">
-                                <h4 style="font-size: 15px; color: #e2e8f0;">⏱️ SLA</h4>
-                                <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
-                                    <a href="{{ route('admin.tickets.index', ['company_id' => request('company_id'), 'sla_status' => 'on_time']) }}"
-                                        class="btn btn-outline-success"
-                                        style="{{ request('sla_status') === 'on_time' ? 'background: #16a34a; color: white;' : '' }}">
-                                        ✅ Tepat Waktu
-                                    </a>
-                                    <a href="{{ route('admin.tickets.index', ['company_id' => request('company_id'), 'sla_status' => 'late']) }}"
-                                        class="btn btn-outline-warning"
-                                        style="{{ request('sla_status') === 'late' ? 'background: #f59e0b; color: white;' : '' }}">
-                                        ⏰ Terlambat
-                                    </a>
-                                    <a href="{{ route('admin.tickets.index', ['company_id' => request('company_id')]) }}"
-                                        class="btn btn-outline-secondary">❌ Reset SLA</a>
-                                </div>
-                            </div>
-                        @else
-                            <p style="margin-top: 10px; font-size: 14px; color: #cbd5e1;">🛑 Tidak ada SLA untuk perusahaan ini.</p>
-                        @endif
-                    @endif
-                </div>
             </div>
 
-            {{-- Konten Utama --}}
             <div style="flex: 1;">
                 {{-- Form Pencarian --}}
                 <form method="GET" action="{{ route('admin.tickets.index') }}">
@@ -259,60 +201,55 @@
                     <div class="alert-success">{{ session('success') }}</div>
                 @endif
 
-                {{-- Tabel --}}
-                <div class="card">
-                    <div class="card-body">
-                        <table class="ticket-table">
-                            <thead>
-                                <tr>
-                                    <th>Subject</th>
-                                    <th>Pengirim</th>
-                                    <th>Status</th>
-                                    <th>Isi</th>
-                                    <th>Urgency</th>
-                                    <th>Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse ($tickets as $ticket)
-                                    <tr>
-                                        <td>{{ $ticket->subject }}</td>
-                                        <td>{{ $ticket->user->name }}<br><small>{{ $ticket->user->email }}</small></td>
-                                        <td><span class="status-badge {{ $ticket->status }}">{{ ucfirst($ticket->status) }}</span></td>
-                                        <td>{{ Str::limit($ticket->message, 50) }}</td>
-                                        <td>
-                                            @php
-                                                $urgencyClass = $ticket->urgency;
-                                                $urgencyLabel = match($ticket->urgency) {
-                                                    'low' => '🕯️ Low',
-                                                    'medium' => '🥊 Medium',
-                                                    'high' => '♨️ High',
-                                                    'urgent' => '🚨 Urgent',
-                                                    default => ucfirst($ticket->urgency)
-                                                };
-                                            @endphp
-                                            <span class="urgency-badge {{ $urgencyClass }}">{{ $urgencyLabel }}</span>
-                                        </td>
-                                        <td>
-                                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                                <a href="{{ route('admin.tickets.openAndRedirect', $ticket->ticket_id) }}" class="btn btn-outline-secondary btn-sm">Lihat</a>
-                                                @can('reply ticket')
-                                                    <a href="{{ route('admin.tickets.openAndRedirect', $ticket->ticket_id) }}" class="btn btn-primary btn-sm">Balas</a>
-                                                @endcan
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr><td colspan="6">Tidak ada tiket ditemukan.</td></tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                {{-- Grid Tiket --}}
+                <div class="ticket-grid">
+                    @forelse ($tickets as $ticket)
+                        <div class="card">
+                            <h3 style="font-size: 18px; margin-bottom: 8px;">🎫 {{ $ticket->subject }}</h3>
+                            <p><strong>Pengirim:</strong> {{ $ticket->user->name }} ({{ $ticket->user->email }})</p>
+                            <p><strong>Status:</strong> <span class="status-badge {{ $ticket->status }}">{{ ucfirst($ticket->status) }}</span></p>
+                            <p><strong>Isi:</strong> {{ Str::limit($ticket->message, 80) }}</p>
+                            <p>
+                                <strong>Urgensi:</strong>
+                                <span class="urgency-badge {{ $ticket->urgency }}">
+                                    {{
+                                        match($ticket->urgency) {
+                                            'low' => '🕯️ Low',
+                                            'medium' => '🥊 Medium',
+                                            'high' => '♨️ High',
+                                            'urgent' => '🚨 Urgent',
+                                            default => ucfirst($ticket->urgency)
+                                        }
+                                    }}
+                                </span>
+                            </p>
 
-                        {{-- Pagination --}}
-                        <div class="pagination">
-                            {{ $tickets->links() }}
+                            {{-- Survey --}}
+                            <p>
+                                <strong>Survey:</strong>
+                                @if ($ticket->survey)
+                                    ✅ Sudah disurvei – 
+                                    <a href="{{ route('admin.surveys.show', $ticket->survey->id) }}" class="btn btn-outline-primary btn-sm">Lihat Survey</a>
+                                @else
+                                    🕐 Belum disurvei
+                                @endif
+                            </p>
+
+                            <div style="margin-top: 12px; display: flex; gap: 8px;">
+                                <a href="{{ route('admin.tickets.openAndRedirect', $ticket->ticket_id) }}" class="btn btn-outline-secondary btn-sm">Lihat</a>
+                                @can('reply ticket')
+                                    <a href="{{ route('admin.tickets.openAndRedirect', $ticket->ticket_id) }}" class="btn btn-primary btn-sm">Balas</a>
+                                @endcan
+                            </div>
                         </div>
-                    </div>
+                    @empty
+                        <p>Tidak ada tiket ditemukan.</p>
+                    @endforelse
+                </div>
+
+                {{-- Pagination --}}
+                <div class="pagination">
+                    {{ $tickets->links() }}
                 </div>
             </div>
         </div>

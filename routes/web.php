@@ -10,6 +10,8 @@ use App\Http\Controllers\Staff\TicketController as StaffTicketController;
 use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\TelegramLogController;
+use App\Http\Controllers\WAQRController;
+use App\Http\Controllers\Admin\SurveyController;
 
 
 Route::get('/', function () {
@@ -64,9 +66,20 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/tickets')->as('admin.ti
     Route::get('/', [AdminTicketController::class, 'index'])->name('index');
     Route::get('/{ticket}/open', [AdminTicketController::class, 'openAndRedirect'])->name('openAndRedirect');
     Route::get('/{ticket}', [AdminTicketController::class, 'show'])->name('show');
-    Route::post('/{ticket}/reply', [AdminTicketReplyController::class, 'store'])->name('reply.store');    
-
+    Route::post('/{ticket}/reply', [AdminTicketReplyController::class, 'store'])->name('reply.store');
+    
 });
+
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('surveys/cs', [SurveyController::class, 'csIndex'])->name('surveys.cs-index');
+});
+
+// ✅ Tambahkan ini di luar prefix 'admin/tickets'
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/surveys/{survey}', [\App\Http\Controllers\Admin\SurveyController::class, 'show'])->name('surveys.show');
+});
+
+
 
 Route::middleware(['auth', 'role:staff|admin'])->prefix('staff/tickets')->as('staff.tickets.')->group(function () {
     Route::get('/', [StaffTicketController::class, 'index'])->name('index');
@@ -95,6 +108,12 @@ Route::middleware(['auth', 'role:user|admin|staff'])->prefix('tickets')->as('tic
     Route::post('/{ticket}/reply', [TicketReplyController::class, 'store'])->name('reply');
 });
 
+
+Route::get('/qr-wa', [WAQRController::class, 'showQR'])->name('wa.qr');
+
+Route::get('test-survey', function () {
+    return 'Survey Page OK';
+});
 
 
 require __DIR__.'/auth.php';

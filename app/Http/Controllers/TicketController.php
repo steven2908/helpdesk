@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, Storage};
 use App\Models\{Company, User};
 use App\Events\TicketCreated;
+use App\Helpers\WhatsappHelper;
 
 class TicketController extends Controller
 {
@@ -109,6 +110,22 @@ class TicketController extends Controller
 
     event(new TicketCreated($ticket)); // broadcast ke frontend
     event(new \App\Events\TicketCreatedTelegram($ticket));
+
+
+    // Kirim notifikasi ke pemilik tiket
+$phone = $ticket->user->phone;
+$message = "✅ Halo {$ticket->user->name}, tiket Anda berhasil dibuat!\n\n🆔 ID: {$ticket->ticket_id}\n📌 Subjek: {$ticket->subject}\n📍 Status: Open\n\nKami akan segera memprosesnya. Terima kasih 🙏";
+WhatsappHelper::send($phone, $message);
+
+// Kirim notifikasi ke semua staff di perusahaan yang sama
+$staffs = User::role('staff')
+    ->whereNotNull('phone')
+    ->get();
+
+foreach ($staffs as $staff) {
+    $staffMessage = "📩 Hai {$staff->name},\n\nAda tiket baru yang masuk dari user *{$ticket->user->name}*:\n\n🆔 ID: {$ticket->ticket_id}\n📌 Subjek: {$ticket->subject}\n🎯 Urgensi: {$ticket->urgency}\n\nSilakan dicek di sistem Helpdesk.";
+    WhatsappHelper::send($staff->phone, $staffMessage);
+}
 
 
     \Log::info('✅ Tiket berhasil dibuat dari form web oleh user ID: ' . $user->id);

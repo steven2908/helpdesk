@@ -106,6 +106,11 @@ public function isStaff() {
     return $this->hasRole('staff');
 }
 
+public function survey()
+{
+    return $this->hasOne(Survey::class);
+}
+
 
 
 

@@ -142,6 +142,8 @@
             <a href="{{ route('admin.tickets.index') }}" class="nav-link">All Tickets</a>
             <a href="{{ route('admin.clients.index') }}" class="nav-link">Master Client</a>
             <a href="{{ route('admin.telegram.logs.index') }}" class="nav-link">Telegram Log</a>
+            <a href="{{ route('wa.qr') }}" class="nav-link">Master Device</a> {{-- QR Code WA --}}
+            <a href="{{ route('admin.surveys.cs-index') }}" class="nav-link">📊 Survei Pelayanan CS</a>
         @endrole
 
         <!-- Desktop Profile Dropdown -->
@@ -180,6 +182,8 @@
         <a href="{{ route('admin.tickets.index') }}">All Tickets</a>
         <a href="{{ route('admin.clients.index') }}">Master Client</a>
         <a href="{{ route('admin.telegram.logs.index') }}">Telegram Log</a>
+        <a href="{{ route('wa.qr') }}">Master Device</a> {{-- Tambahkan di sini --}}
+        <a href="{{ route('admin.surveys.cs-index') }}">📊 Survei Pelayanan CS</a>
     @endrole
 
     <!-- User Info & Logout (Mobile) -->

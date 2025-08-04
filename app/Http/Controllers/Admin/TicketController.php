@@ -9,12 +9,15 @@ use App\Models\Company;
 use Illuminate\Support\Facades\DB;
 use App\Helpers\SlaHelper; // ✅ Tambahkan ini
 use App\Events\TicketStatusUpdatedTelegram;
+use App\Helpers\WhatsappHelper;
+use App\Http\Controllers\WAInboxController;
+
 
 class TicketController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Ticket::with(['user.company']);
+        $query = Ticket::with(['user.company','survey']);
 
         // Filter status
         if ($request->filled('status')) {
@@ -96,6 +99,8 @@ if ($ticket->status === 'open') {
 if ($ticket->status === 'closed' && is_null($ticket->solved_at)) {
     $ticket->solved_at = now();
     $sendNotif = true;
+
+    app(WAInboxController::class)->kirimSurveyJikaTiketSelesai($ticket);
 }
 
 $ticket->save();
@@ -108,6 +113,8 @@ if ($sendNotif) {
     };
 
     event(new TicketStatusUpdatedTelegram($ticket, $statusMessage));
+    WhatsappHelper::send($ticket->user->phone, $statusMessage);
+
 }
 
 
@@ -136,6 +143,8 @@ if ($sendNotif) {
 
         if ($ticket->status === 'closed' && is_null($ticket->solved_at)) {
             $ticket->solved_at = now();
+
+            app(WAInboxController::class)->kirimSurveyJikaTiketSelesai($ticket);
         }
 
         $ticket->save();
@@ -147,6 +156,8 @@ if ($sendNotif) {
 };
 
 event(new TicketStatusUpdatedTelegram($ticket, $statusMessage));
+WhatsappHelper::send($ticket->user->phone, $statusMessage);
+
 
         return redirect()->route('admin.tickets.show', $ticket)->with('success', 'Status tiket berhasil diperbarui.');
     }

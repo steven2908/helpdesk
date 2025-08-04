@@ -121,4 +121,11 @@ class Ticket extends Model
 
         return $this->created_at->diffInMinutes($this->solved_at);
     }
+
+    public function survey()
+{
+    return $this->hasOne(Survey::class, 'ticket_id', 'id');
+}
+
+
 }
