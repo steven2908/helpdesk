@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\{Ticket, TicketReply, User, WASession, Survey};
+use App\Models\{Ticket, TicketReply, User, WASession, Survey, CaseLock};
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Hash;
 
@@ -59,6 +59,16 @@ class WAInboxController extends Controller
 
         switch ($step) {
             case 'idle':
+                
+                if ($pesanLower === 'buat case log') {
+                    if (!$user) {
+                        return $this->sendWAMessage($nomor, "❌ Nomor Anda belum terdaftar. Silakan ketik *register* untuk mendaftar.");
+                    }
+                    $session->step = 'awaiting_case_date';
+                    $session->data = json_encode([]);
+                    $session->save();
+                    return $this->sendWAMessage($nomor, "📝 Membuat Case Log baru.\n\nSilakan masukkan tanggal (format YYYY-MM-DD):");
+                }
                 if ($pesanLower === 'buat tiket') {
                     if (!$user) {
                         return $this->sendWAMessage($nomor, "❌ Nomor Anda belum terdaftar. Silakan ketik *register* untuk mendaftar.");
@@ -80,11 +90,19 @@ class WAInboxController extends Controller
                     $session->save();
                     return $this->sendWAMessage($nomor, "🧾 Silakan ketik *nama lengkap* Anda:");
                 } else {
-                    return $this->sendWAButtons($nomor, "Selamat datang di *Helpdesk*! Silakan pilih layanan:", [
+                    $buttons = [
                     ['id' => 'buat tiket', 'title' => 'Buat Tiket'],
                     ['id' => 'chat dengan customer service', 'title' => 'Chat dengan Customer Service'],
                     ['id' => 'detail tiket', 'title' => 'Detail Tiket'],
-                ]);
+                ];
+
+                // ✅ Tambahkan menu Case Log hanya jika user punya role staff
+                if ($user && $user->hasRole('staff')) {
+                    $buttons[] = ['id' => 'case log', 'title' => 'Buat Case Log'];
+                }
+
+                return $this->sendWAButtons($nomor, "Selamat datang di *JPN SYSTEM*! Silakan pilih layanan:", $buttons);
+
 
                 }
 
@@ -178,6 +196,78 @@ class WAInboxController extends Controller
                 $session->step = 'idle';
                 $session->save();
                 return $this->sendWAMessage($nomor, $msg);
+
+            case 'awaiting_case_date':
+                // Validasi tanggal format YYYY-MM-DD
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $pesan)) {
+                    return $this->sendWAMessage($nomor, "❌ Format tanggal salah. Silakan masukkan tanggal dengan format YYYY-MM-DD (contoh: 2025-08-12).");
+                }
+                $data['date'] = $pesan;
+                $session->step = 'awaiting_case_technician';
+                $session->data = json_encode($data);
+                $session->save();
+                return $this->sendWAMessage($nomor, "🛠 Masukkan nama teknisi:");
+                
+            case 'awaiting_case_technician':
+                if (empty($pesan)) {
+                    return $this->sendWAMessage($nomor, "❌ Nama teknisi tidak boleh kosong. Silakan ulangi:");
+                }
+                $data['technician_name'] = $pesan;
+                $session->step = 'awaiting_case_title';
+                $session->data = json_encode($data);
+                $session->save();
+                return $this->sendWAMessage($nomor, "📋 Masukkan judul case log:");
+
+            case 'awaiting_case_title':
+                if (empty($pesan)) {
+                    return $this->sendWAMessage($nomor, "❌ Judul tidak boleh kosong. Silakan ulangi:");
+                }
+                $data['title'] = $pesan;
+                $session->step = 'awaiting_case_reason';
+                $session->data = json_encode($data);
+                $session->save();
+                return $this->sendWAMessage($nomor, "❓ Jelaskan alasan case log:");
+
+            case 'awaiting_case_reason':
+                if (empty($pesan)) {
+                    return $this->sendWAMessage($nomor, "❌ Alasan tidak boleh kosong. Silakan ulangi:");
+                }
+                $data['reason'] = $pesan;
+                $session->step = 'awaiting_case_impact';
+                $session->data = json_encode($data);
+                $session->save();
+                return $this->sendWAMessage($nomor, "⚠️ Jelaskan dampak dari case log:");
+
+            case 'awaiting_case_impact':
+                if (empty($pesan)) {
+                    return $this->sendWAMessage($nomor, "❌ Dampak tidak boleh kosong. Silakan ulangi:");
+                }
+                $data['impact'] = $pesan;
+                $session->step = 'awaiting_case_notes';
+                $session->data = json_encode($data);
+                $session->save();
+                return $this->sendWAMessage($nomor, "📝 Masukkan catatan tambahan (atau ketik '-' jika tidak ada):");
+
+            case 'awaiting_case_notes':
+                $data['notes'] = $pesan === '-' ? null : $pesan;
+
+                // Simpan CaseLock ke DB
+                \App\Models\CaseLock::create([
+                    'date' => $data['date'],
+                    'technician_name' => $data['technician_name'],
+                    'title' => $data['title'],
+                    'reason' => $data['reason'],
+                    'impact' => $data['impact'],
+                    'notes' => $data['notes'],
+                    'user_id' => $user->id,
+                ]);
+
+                $session->step = 'idle';
+                $session->data = json_encode([]);
+                $session->save();
+
+                return $this->sendWAMessage($nomor, "✅ Case Log berhasil dibuat. Terima kasih!");
+
         }
 
         return response()->json(['status' => 'ok']);

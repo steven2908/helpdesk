@@ -83,4 +83,13 @@ class ClientController extends Controller
 
         return redirect()->route('admin.clients.index')->with('success', 'Pengguna berhasil diperbarui.');
     }
+
+    public function destroy(User $user)
+{
+    $user->delete();
+
+    return redirect()->route('admin.clients.index')
+        ->with('success', 'User berhasil dihapus.');
+}
+
 }

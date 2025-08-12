@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\TelegramLogController;
 use App\Http\Controllers\WAQRController;
 use App\Http\Controllers\Admin\SurveyController;
+use App\Http\Controllers\CaseLockController;
 
 
 Route::get('/', function () {
@@ -33,12 +34,15 @@ Route::middleware('auth')->group(function () {
 // Admin-only: Kelola user (client)
 Route::middleware(['auth', 'role:admin'])->prefix('admin/clients')->name('admin.clients.')->group(function () {
     Route::get('/', [ClientController::class, 'index'])->name('index');
-    Route::get('/create', [ClientController::class, 'create'])->name('create'); // 👈 Tambahkan baris ini
+    Route::get('/create', [ClientController::class, 'create'])->name('create');
     Route::post('/store-user', [ClientController::class, 'storeUser'])->name('storeUser');
     Route::get('/{user}/edit', [ClientController::class, 'edit'])->name('edit');
     Route::put('/{user}', [ClientController::class, 'update'])->name('update');
 
+    // Tambahkan route delete user
+    Route::delete('/{user}', [ClientController::class, 'destroy'])->name('destroy');
 });
+
 
 
 // Admin-only: Kelola perusahaan
@@ -114,6 +118,24 @@ Route::get('/qr-wa', [WAQRController::class, 'showQR'])->name('wa.qr');
 Route::get('test-survey', function () {
     return 'Survey Page OK';
 });
+
+// STAFF: CRUD Case Lock
+Route::middleware(['auth', 'role:staff'])
+    ->prefix('staff')
+    ->name('staff.')
+    ->group(function () {
+        Route::resource('case_locks', CaseLockController::class);
+    });
+
+// ADMIN: List Case Lock (Read-Only)
+Route::middleware(['auth', 'role:admin'])
+    ->prefix('admin/case_locks')
+    ->name('admin.case_locks.')
+    ->group(function () {
+        Route::get('/', [CaseLockController::class, 'index'])->name('index');
+        Route::get('/{caseLock}', [CaseLockController::class, 'show'])->name('show');
+    });
+
 
 
 require __DIR__.'/auth.php';
